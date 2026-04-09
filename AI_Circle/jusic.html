@@ -325,6 +325,7 @@
             </div>
         </div>
     </div>
+    
 
     <script>
         let selectedStockId = null;
@@ -444,18 +445,42 @@
             myStocksEl.innerHTML = '';
 
             const holdings = portfolio.holdings;
-            for (const [id, qty] of Object.entries(holdings)) {
-                if (qty > 0) {
-                    const stock = market.find(s => s.id == id);
-                    if (stock) {
-                        const totalVal = stock.price * qty;
-                        stockAsset += totalVal;
-                        myStocksEl.innerHTML += `
-                            <div class="my-stock">
-                                <span>${stock.name} <strong style="color: #94a3b8">${qty}주</strong></span>
-                                <span>${formatCurrency(totalVal)}</span>
-                            </div>
-                        `;
+            // [수정] 파이썬 서버의 객체 구조(data.amount)에 맞춰서 확인
+            const hasHoldings = Object.values(holdings).some(data => data.amount > 0);
+
+            if (!hasHoldings) {
+                myStocksEl.innerHTML = `
+                    <div style="text-align:center; padding:30px 10px; color:var(--secondary-text); font-size:0.85rem; background:rgba(0,0,0,0.1); border-radius:12px;">
+                        보유 중인 주식이 없습니다.
+                    </div>`;
+            } else {
+                for (const [id, data] of Object.entries(holdings)) {
+                    // [수정] data가 객체이므로 data.amount를 가져와야 함
+                    const qty = data.amount; 
+                    if (qty > 0) {
+                        const stock = market.find(s => s.id == id);
+                        if (stock) {
+                            const totalVal = stock.price * qty;
+                            stockAsset += totalVal;
+                            
+                            // 서버에서 계산해서 보내준 수익률 사용 (data.profit_rate)
+                            const pRate = data.profit_rate || 0;
+
+                            myStocksEl.innerHTML += `
+                                <div class="my-stock" style="display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                                        <span style="font-weight: 600; font-size: 0.95rem;">${stock.name}</span>
+                                        <span style="font-size: 0.8rem; color: var(--secondary-text);">${qty}주 보유</span>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-weight: 700; font-size: 0.95rem;">${formatCurrency(totalVal)}</div>
+                                        <div style="font-size: 0.75rem; color: ${pRate >= 0 ? 'var(--up-color)' : 'var(--down-color)'};">
+                                            ${pRate > 0 ? '▲' : pRate < 0 ? '▼' : ''} ${Math.abs(pRate)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
                     }
                 }
             }
